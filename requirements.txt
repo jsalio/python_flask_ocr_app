@@ -1,0 +1,17 @@
+zipp
+wrapt
+Werkzeug
+typing-extensions
+pyparsing
+Pillow
+MarkupSafe
+itsdangerous
+packaging
+importlib-metadata
+deprecated
+async-timeout
+click
+Pillow
+flask
+redis
+pytesseract
