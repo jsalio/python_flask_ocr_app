@@ -1,60 +1,35 @@
-
-
-# @app.route('/upload', methods=['GET', 'POST'])
-try:
-    from PIL import Image
-except ImportError:
-    import Image
+import io
 import os
-from flask import Blueprint, render_template, request
-import pytesseract
+from flask import Blueprint, render_template, request, send_file
 from werkzeug.utils import secure_filename
+from ocr_service import images_to_searchable_pdf
 
 upload_api = Blueprint('upload_api', __name__)
 
-
-# define a folder to store and later serve the images
 UPLOAD_FOLDER = 'static/uploads/'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
 
-# allow files of a specific type
-ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg'])
 
-# function to check the file extension
 def allowed_file(filename):
-    return '.' in filename and \
-           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
 @upload_api.route("/upload", methods=['GET', 'POST'])
 def upload_page():
     if request.method == 'POST':
-        #this a text remove for for return code to normally
-        for var in list(range(1000)) :
-            # check if there is a file in the request
-            if 'file' not in request.files:
-                return render_template('upload.html', msg='No file selected')
-            file = request.files['file']
-            # if no file is selected
-            if file.filename == '':
-                return render_template('upload.html', msg='No file selected')
+        files = request.files.getlist('files')
+        valid = [f for f in files if f and f.filename and allowed_file(f.filename)]
+        if not valid:
+            return render_template('upload.html', msg='No valid image files selected (PNG, JPG, JPEG)')
 
-            if file and allowed_file(file.filename):
+        lang = request.form.get('lang', 'eng')
+        pdf_bytes = images_to_searchable_pdf(valid, lang=lang)
 
-                filename = secure_filename(file.filename)
-                file.save(os.path.join(UPLOAD_FOLDER, filename))
-                # call the OCR function on it
-                extracted_text = ocr_core(file)
-                print("Loop {} :", var)
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name='searchable.pdf'
+        )
 
-                # extract the text and display it
-                return render_template('upload.html',
-                                       msg='Successfully processed',
-                                       extracted_text=extracted_text,
-                                       img_src=UPLOAD_FOLDER + filename)
-    elif request.method == 'GET':
-        return render_template('upload.html')
-
-def ocr_core(filename):
-    """
-    This function will handle the core OCR processing of images.
-    """
-    text = pytesseract.image_to_string(Image.open(filename))  # We'll use Pillow's Image class to open the image and pytesseract to detect the string in the image
-    return text
+    return render_template('upload.html')
