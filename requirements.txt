@@ -15,4 +15,4 @@ Pillow
 flask
 redis
 pytesseract
-pypdf
+pypdf<4.0
